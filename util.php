@@ -6,7 +6,7 @@ require_once(__DIR__ . '/config.php');
 function isLoggedIn() 
 {
 	$session = Session::start();
-    $user = getUser();
+    $user = Session::getUser();
 	$logged = false;
     if (isset($user) && $user->loggedIn()) {  
         $logged = true;

@@ -54,7 +54,7 @@ class Session
     
 	public function getUser()
 	{
-		return get('user');
+		return Session::get('user');
 	}
  }
  

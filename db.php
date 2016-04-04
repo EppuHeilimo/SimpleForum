@@ -28,8 +28,7 @@ class DataBase
      */
     public function userExists($username) 
     {
-        $result = $conn->query("SELECT * FROM user WHERE username = $username")
-        );
+        $result = $conn->query("SELECT * FROM user WHERE username = $username");
         return ($result);
     }
     

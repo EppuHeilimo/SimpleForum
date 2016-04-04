@@ -25,6 +25,6 @@ class User
     }
 	public function isLoggedIn()
 	{
-		return this->loggedIn;
+		return loggedIn;
 	}
 }
