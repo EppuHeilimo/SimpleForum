@@ -1,8 +1,5 @@
 <?php
 
- 
-require_once(__DIR__ . "/dbconfig.php");
- 
 class DataBase
 {
     private $conn = null;
@@ -10,11 +7,14 @@ class DataBase
     /* Constructor. Creates a DB connection. */
     public function __construct() 
     {     
-        $this->conn = new PDO('mysql:host=localhost;dbname=asd;charset=utf8',
-							'root','pass');
+        $this->conn = new PDO('mysql:host=mysql.labranet.jamk.fi;dbname=H8566;charset=utf8',
+							'H8566','jznmOhKezTpPxioCt4Y2tK0R3v8LKFt6');
+        $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_WARNING);
+        $this->conn->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
         if ($this->conn == false) {
-            die("Could not connect to database: " . $conn->errorInfo());
+            die("Could not connect to database: " . $this->conn->errorInfo());
         }
+        
     }
     
     /* Destructor. Closes the DB connection. */
@@ -28,16 +28,43 @@ class DataBase
      */
     public function userExists($username) 
     {
-        $result = $conn->query("SELECT * FROM user WHERE username = $username");
-        return ($result);
+        $result = $this->conn->query("SELECT * FROM ForumUser WHERE Name = '$username'");
+        $count = count($result->fetchAll());
+        if($count > 0)
+            return true;
+        else
+            return false;
+    }
+    
+    public function emailExists($email) 
+    {
+        $result = $this->conn->query("SELECT * FROM ForumUser WHERE Name = '$email'");
+        $count = count($result->fetchAll());
+        if($count > 0)
+            return true;
+        else
+            return false;
     }
     
     /**
      * Inserts a new user into the database.
      */
-    public function createUser($username, $password) 
+    public function createUser($username, $password, $email) 
     {
-        $result = $conn->query("INSERT INTO user(username, pwhash) VALUES ($username, $password)");
+        $sql = "INSERT INTO ForumUser (JoinDate, Name, PassHash, LastLogin, Email) VALUES (CURDATE(), '$username', '$password', CURDATE(), '$email');";
+        $result = $this->conn->exec($sql);
+        
+        /* Insert accesslevel 0 (default) to all boards for the user */
+        $boards = $this->getBoards();
+        $boardname = "BoardName";
+        foreach($boards as $row)
+        {
+            $sql = "INSERT INTO Moderator (FK_Board, FK_User, FK_AccessLevel) VALUES ((SELECT ID FROM Board where BoardName='$row[$boardname]'),(SELECT ID FROM ForumUser where Name='$username'), (SELECT ID FROM AccessLevel where ALevel='0'));";
+            $result = $this->conn->exec($sql);
+        }
+        
+        if(!$result)
+            print_r($this->conn->errorInfo());
         return $result != false;
     }
     
@@ -46,83 +73,77 @@ class DataBase
      */
     public function getPassword($username) 
     {
-        $result = $conn->query("SELECT pwhash FROM user WHERE username = $username");
-        return result != false;
+        $result = $this->conn->query("SELECT PassHash FROM ForumUser WHERE Name = '$username'");
+        $row = $result->fetch(PDO::FETCH_ASSOC);
+        $pwhash = $row['PassHash'];
+        return $pwhash;
     }
     
-    /**
-     * Gets an auth token row from the database that matches the given selector
-     * and hasn't expired.
-     */
-    public function getAuthToken($selector) 
+    public function getBoards()
     {
-        $query = <<<SQL
-            SELECT acc.username, auth.token 
-                FROM auth_token AS auth
-                INNER JOIN account AS acc 
-                    ON acc.id = auth.userid
-                WHERE auth.selector = $1 AND auth.expires > NOW()
-SQL;
-        
-        $res = pg_query_params(
-            $this->conn,
-            $query,
-            array($selector)
-        );
-        $arr = pg_fetch_array($res);
-        return $arr;
+        $res = $this->conn->query("SELECT ID, BoardName, BoardDescription from Board");
+        return $res;
     }
     
-    /**
-     * Remove the given token from the database.
-     */
-    public function removeToken($selector, $token) 
+    public function getThreads($board)
     {
-        pg_query_params(
-            $this->conn,
-            "DELETE FROM auth_token WHERE selector = $1 AND token = $2",
-            array($selector, $token)
-        );
-        $this->clearExpiredTokens();
+        $res = $this->conn->query("SELECT ThreadName, ViewCount, PostCount, CreateDate from Thread where FK_Board=(SELECT ID FROM Board where BoardName='$board')");
+        return $res;
     }
     
-    /**
-     * Adds a new auth token to the database.
-     */
-    public function addToken($username, $selector, $token, $expiry) 
+    public function isModerator($username, $board)
     {
-        $userid = $this->getUserId($username);
-        if ($userid != null) {
-            $res = pg_query_params(
-                $this->conn,
-                "INSERT INTO auth_token(userid, selector, token, expires) VALUES ($1, $2, $3, $4)",
-                array($userid, $selector, $token, date("Y-m-d H:i:s", $expiry))
-            );
-            return $res != false;
+        /* Check if user has higher than default (0) access level in the board */
+        $res = $this->conn->query("SELECT ALevel from AccessLevel where ID=(SELECT FK_AccessLevel from Moderator where FK_User=(SELECT ID from ForumUser where Name='$username') and FK_Board=(SELECT ID FROM Board where BoardName='$board')));");
+        $row = $res->fetch(PDO::FETCH_ASSOC);
+        $level = $row['ALevel'];
+        if($level > 0)
+            return true;
+        return false;
+    }
+    
+    public function isAdmin($username)
+    {
+        /*Checks if user is admin*/
+        $res = $this->conn->query("SELECT isAdmin from ForumUser where Name='$username';");
+        $row = $res->fetch(PDO::FETCH_ASSOC);
+        $is = $row['isAdmin'];
+        if($is)
+        {
+            return true;
         }
         return false;
     }
     
-    /**
-     * Map a username to a userid.
-     */
-    protected function getUserId($username) 
+    public function addBoard($boardname, $boarddesc)
     {
-        $res = pg_query_params(
-            $this->conn,
-            "SELECT id FROM account WHERE username = $1",
-            array($username)
-        );
-        if ($res == false) {
-            return null;
-        }
-        $arr = pg_fetch_array($res);
-        return isset($arr['id']) ? $arr['id'] : null;
+        $res = $this->conn->exec("INSERT INTO Board (BoardName, BoardDescription) VALUES ('$boardname', '$boarddesc');");
     }
     
-    /** Clears expired tokens from the database */
-    protected function clearExpiredTokens() 
+    public function addThread($board, $subject, $message, $user)
     {
-        $conn->query("DELETE FROM auth_token WHERE expires < NOW()");
+        $res = $this->conn->exec("INSERT INTO Thread (ThreadName, ViewCount, PostCount, CreateDate, Sticky, Locked, FK_Board)
+                VALUES ('$subject', 0, 1, NOW(), 0, 0, (select ID from Board where BoardName = '$board'));");
+        $this->addPost($subject, $message, $user, $subject);
+    }
+    
+    public function addPost($subject, $message, $user, $thread)
+    {
+        $res = $this->conn->exec("INSERT INTO Post (PostDate, PostName, PostMessage, FK_Thread, FK_User)
+            VALUES (NOW(), '$subject', '$message', (select ID from Thread where ThreadName = '$thread'),
+            (select ID from ForumUser where Name = '$user'));");
+    }
+    
+    public function getPosts($thread){
+        $res = $this->conn->query("SELECT * from Post where FK_Thread = (SELECT ID from Thread where ThreadName = '$thread') order by PostDate ASC;");
+        return $res;
+    }
+    
+    //TODO: optimize: get poster with getPosts query
+    public function getPoster($post, $postdate){
+        $res = $this->conn->query("SELECT Name from ForumUser where ID = (SELECT FK_User from Post where PostName='$post' and PostDate = '$postdate')");
+        $result = $res->fetch(PDO::FETCH_ASSOC);
+        return $result;
     }
 }
+

@@ -1,17 +1,49 @@
 html {
-
-	
+    
 }
 
-body {
+body
+{
 
+}
+
+.myheader {
+    float: left;
+    display: inline-block;
+    position: relative;
+    left: 80%;
+}
+
+.boards
+{
+    
 }
 
 h1 
 {
-	font-family: "Lucida Sans Unicode", "Lucida Grande", serif;
-	color: black;
-	font-weight: bold;
-	position: relative;
-	left: 80px;
+    float: left;
+    display: inline-block;
+    color: black;
+    font-family: "Lucida Sans Unicode", "Lucida Grande", serif;
+    text-shadow: 2px 2px 5px grey;
+    width: 100%;
+    height: 30%;
+    position: relative;
+    top: 1%;
+    left: 5%;
+}
+
+h3
+{
+
+    
+}
+
+.register
+{
+    
+}
+.login
+{
+    
 }

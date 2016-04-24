@@ -3,5 +3,6 @@ require_once(__DIR__ . "/config.php");
 
 $session = Session::start();
 $session->clear('user');
+clearTokenCookie();
 
-clearCookies();
+header("location: login.php");

@@ -3,16 +3,14 @@
 //some utility
 require_once(__DIR__ . '/config.php');
 
-function isLoggedIn() 
+function isLoggedIn($redirect) 
 {
-	$session = Session::start();
+    $session = Session::start();
     $user = Session::getUser();
-	$logged = false;
-    if (isset($user) && $user->loggedIn()) {  
-        $logged = true;
+    if (isset($user) && $user->isLoggedIn()) 
+    {  
+        header("Location: $redirect");
     } 
-	return $logged;
-
 }
 /*
 	check if user is already logged in and redirect
@@ -20,9 +18,9 @@ function isLoggedIn()
 function redirectTo($redirect = 'index.php')
 {
 	$logged = isLoggedIn();
-	if (logged && !headers_sent()) {
+	if ($logged && !headers_sent()) {
         if (!headers_sent() && isset($redirect)) {
-            header("Location: {$redirect}");
+            header("Location: '$redirect'");
         }
         exit();
     }
@@ -66,7 +64,7 @@ function clearTokenCookie()
  
 function isValidPassword($passwd) 
 {
-    if (strlen($passwd) >= MIN_PASSWORD_LENGTH) {
+    if (strlen($passwd) >= MIN_PASSWORD) {
         return true;
     }
     return false;
@@ -77,7 +75,7 @@ function isValidPassword($passwd)
  */
 function isValidUsername($username) 
 {
-    if (strlen($username) >= MIN_USERNAME_LENGTH) {
+    if (strlen($username) >= MIN_USERNAME) {
         return true;
     }
     return false;
@@ -88,14 +86,17 @@ function isValidUsername($username)
  */
 function pw_encode($password) 
 {
-    return password_hash($password, PASSWORD_DEFAULT);
+    $hasher = new PasswordHash(8, FALSE);
+    $pw = $hasher->HashPassword($password);
+    return $pw;
 }
 
 /**
  * Verify that the password matches the given password hash.
  */
-function pw_verify($password, $pwhash) 
+function pw_verify($password, $pwhash)
 {
-    return password_verify($password, $pwhash);
+    $hasher = new PasswordHash(8, FALSE);
+    return $hasher->CheckPassword($password, $pwhash);
 }
 

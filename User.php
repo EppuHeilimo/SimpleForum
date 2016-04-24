@@ -23,8 +23,13 @@ class User
         }
         return false;
     }
-	public function isLoggedIn()
-	{
-		return loggedIn;
-	}
+    public function isLoggedIn()
+    {
+        return $this->loggedIn;
+    }
+    
+    public function getUsername()
+    {
+        return $this->username;
+    }  
 }

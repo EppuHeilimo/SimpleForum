@@ -3,7 +3,7 @@
  
 class Session 
 { 
-	private static $instance = null;
+    private static $instance = null;
 	
 	    /** Constructor */
     protected function __construct() 
@@ -52,9 +52,9 @@ class Session
         return $_SESSION[$key];
     }
     
-	public function getUser()
-	{
-		return Session::get('user');
-	}
+    public function getUser()
+    {
+        return Session::get('user');
+    }
  }
  
